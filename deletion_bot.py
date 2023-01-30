@@ -2,12 +2,11 @@ import discord
 from dotenv import load_dotenv
 import os
 import json
-import urllib
+import requests
 import keras
 import numpy as np
 import cv2
 from moviepy.editor import VideoFileClip
-from PIL import Image
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
@@ -52,6 +51,10 @@ def handle_video(url):
     print(np.average(preds))
     return np.average(preds) > THRESHOLD ##if more than half of the frames are considered bad, mark
 def handle_image(url):
+    #defer to video if erroneously passed gif
+    if url.endswith('.gif'):
+        return handle_video(url)
+    
     image = cv2.imread(url)
     pred = predict(image)  
     os.remove(url)  
@@ -60,34 +63,45 @@ def handle_image(url):
 async def react_to_result(result, message):
     if result:
         await message.add_reaction('🤡')
-    else:
-        await message.add_reaction('👍')
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('cheems!salvation'):
+    if message.content.startswith('ww!salvation'):
         channel_targets['channels'].append(message.channel.id)
+        json.dump(channel_targets, open("target_channels.json"))
         await message.channel.send('Salvation has arrived.')
+
+    if message.content.startswith('ww!forsake'):
+        channel_targets['channels'].remove(message.channel.id)
+        json.dump(channel_targets, open("target_channels.json"))
+        await message.channel.send('This channel has been forsaken.')
     
     if message.channel.id in channel_targets['channels']:
         file_index = 0
         #check if embed is anime
         for embed in message.embeds:
-            match (embed.type):
+            print("Embed:")
+            match (embed.type):                
                 case 'gifv' | 'video':
                     print(embed.video.url)
-                    path = os.path.join("temp", f"{message.id}_{file_index}{embed.video.url[-4:0]}")
-                    urllib.request.urlretrieve(embed.video.url, path)
+                    path = os.path.join("temp", f"{message.id}_{file_index}{embed.video.url[-4:]}")
+                    
+                    r = requests.get(embed.video.url, allow_redirects=True)
+                    open(path, 'wb').write(r.content)
+                    #urllib.request.urlretrieve(embed.video.url, path)
 
-                    react_to_result(handle_video(path))
+                    await react_to_result(handle_video(path), message)
                 case 'image':
                     print(embed.url)
-                    path = os.path.join("temp", f"{message.id}_{file_index}{embed.url[-4:0]}")
-                    urllib.request.urlretrieve(embed.url, path) #Currently gives 403 error
+                    path = os.path.join("temp", f"{message.id}_{file_index}{embed.url[-4:]}")
                     
-                    react_to_result(handle_image(path))
+                    #urllib.request.urlretrieve(embed.url, path) #Currently gives 403 error
+                    r = requests.get(embed.url, allow_redirects=True)
+                    open(path, 'wb').write(r.content)
+                    
+                    await react_to_result(handle_image(path), message)
             file_index += 1
 
         #check if attachment is anime
@@ -97,12 +111,12 @@ async def on_message(message):
                 path = os.path.join("temp", f"{message.id}_{file_index}_{attach.filename}")
                 await attach.save(path)
                 
-                react_to_result(handle_image(path))
+                await react_to_result(handle_image(path), message)
             elif attach.content_type.startswith('video'):
                 print(attach.url)
                 path = os.path.join("temp", attach.filename)
                 await attach.save(path)
-                react_to_result(handle_video(path))
+                await react_to_result(handle_video(path), message)
             file_index += 1
         
 
