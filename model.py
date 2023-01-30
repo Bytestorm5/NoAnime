@@ -1,9 +1,9 @@
 from cProfile import label
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.layers import Dense,Flatten,Conv2D,MaxPooling2D,Dropout
-from keras.models import Sequential
-from keras.optimizers import Adam,SGD
+from tensorflow.keras.layers import Dense,Flatten,Conv2D,MaxPooling2D,Dropout
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import Adam,SGD
 import tensorflow as tf
 import os
 

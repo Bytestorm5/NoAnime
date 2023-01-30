@@ -154,3 +154,5 @@ cython_debug/
 output/
 temp/
 searchterms.json
+final_model/
+test_set/

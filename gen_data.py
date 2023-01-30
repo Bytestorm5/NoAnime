@@ -11,7 +11,7 @@ from download_image import internal_download_image
 def download_image(result):
     folder = 1 if any([tag in search_list["blacklist"] for tag in result[1]]) else 0
     try:
-        internal_download_image(result[0], folder)
+        return internal_download_image(result[0], folder)
     except Exception as e:
         print(e)
     finally:
@@ -46,13 +46,24 @@ def search_gifs(search_term, lmt = 8):
     else:
         top_8gifs = None
 
-def extract_all_for_term(term):
-    r = search_gifs(term)
+def extract_all_for_term(term, limit=8):
+    r = search_gifs(term, limit)
     [download_image(result) for result in r]
 
 if __name__ == "__main__":
-    #test script
+    GIFS_PER_TERM = 16
+
+    term_skew = len(search_list['blacklist']) / len(search_list['whitelist'])
+    vert = True
+    if term_skew < 1:
+        term_skew = 1 / term_skew
+        vert = False
+
+    print(f"Term Skew: {term_skew}")
+    print(f"{len(search_list['blacklist'])} Blacklisted Terms: {search_list['blacklist']}")
+    print(f"{len(search_list['whitelist'])} Whitelisted Terms: {search_list['whitelist']}")
+
     for term in search_list['whitelist']:
-        extract_all_for_term(term)
+        extract_all_for_term(term, GIFS_PER_TERM if vert else int(term_skew * GIFS_PER_TERM))
     for term in search_list['blacklist']:
-        extract_all_for_term(term)
+        extract_all_for_term(term, int(term_skew * GIFS_PER_TERM) if vert else GIFS_PER_TERM)
